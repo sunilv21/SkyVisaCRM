@@ -23,6 +23,16 @@ export function DailyLogList({ logs, customers, onUpdate, onDelete }: DailyLogLi
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [outcomeFilter, setOutcomeFilter] = useState<string>("all")
+  const [followUpFilter, setFollowUpFilter] = useState<string>("all")
+  const [employeeFilter, setEmployeeFilter] = useState<string>("all")
+
+  // Get unique employees from logs
+  const uniqueEmployees = Array.from(new Set(logs.map(log => log.employeeId)))
+    .map(id => {
+      const log = logs.find(l => l.employeeId === id)
+      return { id, name: log?.employeeName || "Unknown" }
+    })
+    .filter(emp => emp.id)
 
   const filteredLogs = logs.filter((log) => {
     const matchesSearch =
@@ -32,8 +42,19 @@ export function DailyLogList({ logs, customers, onUpdate, onDelete }: DailyLogLi
 
     const matchesType = typeFilter === "all" || log.type === typeFilter
     const matchesOutcome = outcomeFilter === "all" || log.outcome === outcomeFilter
+    const matchesEmployee = employeeFilter === "all" || log.employeeId === employeeFilter
+    
+    // Follow-up filter
+    let matchesFollowUp = true
+    if (followUpFilter === "required") {
+      matchesFollowUp = log.followUpRequired === true
+    } else if (followUpFilter === "upcoming") {
+      matchesFollowUp = log.followUpRequired === true && !!log.followUpDate && new Date(log.followUpDate) >= new Date()
+    } else if (followUpFilter === "overdue") {
+      matchesFollowUp = log.followUpRequired === true && !!log.followUpDate && new Date(log.followUpDate) < new Date()
+    }
 
-    return matchesSearch && matchesType && matchesOutcome
+    return matchesSearch && matchesType && matchesOutcome && matchesEmployee && matchesFollowUp
   })
 
   const sortedLogs = filteredLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -69,9 +90,9 @@ export function DailyLogList({ logs, customers, onUpdate, onDelete }: DailyLogLi
   return (
     <div className="space-y-6">
       {/* Filters and Add */}
-      <div className="flex flex-col lg:flex-row gap-4 justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col lg:flex-row gap-4 justify-between items-start">
+        <div className="flex flex-wrap gap-4 flex-1">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search logs..."
@@ -81,7 +102,7 @@ export function DailyLogList({ logs, customers, onUpdate, onDelete }: DailyLogLi
             />
           </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full sm:w-40">
+            <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
@@ -93,7 +114,7 @@ export function DailyLogList({ logs, customers, onUpdate, onDelete }: DailyLogLi
             </SelectContent>
           </Select>
           <Select value={outcomeFilter} onValueChange={setOutcomeFilter}>
-            <SelectTrigger className="w-full sm:w-40">
+            <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="All Outcomes" />
             </SelectTrigger>
             <SelectContent>
@@ -103,6 +124,44 @@ export function DailyLogList({ logs, customers, onUpdate, onDelete }: DailyLogLi
               <SelectItem value="negative">Negative</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={followUpFilter} onValueChange={setFollowUpFilter}>
+            <SelectTrigger className="w-full sm:w-44">
+              <SelectValue placeholder="Follow-up Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Logs</SelectItem>
+              <SelectItem value="required">Follow-up Required</SelectItem>
+              <SelectItem value="upcoming">Upcoming Follow-ups</SelectItem>
+              <SelectItem value="overdue">Overdue Follow-ups</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="All Employees" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Employees</SelectItem>
+              {uniqueEmployees.map((emp) => (
+                <SelectItem key={emp.id} value={emp.id}>
+                  {emp.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(followUpFilter !== "all" || employeeFilter !== "all" || typeFilter !== "all" || outcomeFilter !== "all") && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                setTypeFilter("all")
+                setOutcomeFilter("all")
+                setFollowUpFilter("all")
+                setEmployeeFilter("all")
+              }}
+            >
+              Clear All
+            </Button>
+          )}
         </div>
         <DailyLogForm customers={customers} onSave={onUpdate} />
       </div>
@@ -111,14 +170,14 @@ export function DailyLogList({ logs, customers, onUpdate, onDelete }: DailyLogLi
       {sortedLogs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <div className="text-lg mb-2">
-            {searchTerm || typeFilter !== "all" || outcomeFilter !== "all" ? "No logs found" : "No activity logs yet"}
+            {searchTerm || typeFilter !== "all" || outcomeFilter !== "all" || followUpFilter !== "all" || employeeFilter !== "all" ? "No logs found" : "No activity logs yet"}
           </div>
           <p className="mb-4">
-            {searchTerm || typeFilter !== "all" || outcomeFilter !== "all"
+            {searchTerm || typeFilter !== "all" || outcomeFilter !== "all" || followUpFilter !== "all" || employeeFilter !== "all"
               ? "Try adjusting your filters"
               : "Start logging your customer interactions"}
           </p>
-          {!searchTerm && typeFilter === "all" && outcomeFilter === "all" && (
+          {!searchTerm && typeFilter === "all" && outcomeFilter === "all" && followUpFilter === "all" && employeeFilter === "all" && (
             <DailyLogForm customers={customers} onSave={onUpdate} />
           )}
         </div>

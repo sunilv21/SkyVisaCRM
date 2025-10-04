@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, Users, FileText, Calendar, Plus, LogOut, Shield } from "lucide-react"
 import type { Customer, DailyLog, DashboardStats } from "@/lib/types"
 import { getCustomers, saveCustomer, deleteCustomer, saveDailyLog, deleteDailyLog } from "@/lib/storage"
-import { getCustomerLogs } from "@/lib/api"
+import { getAllLogsFromDB } from "@/lib/api"
 import { CustomerList } from "@/components/customer-list"
 import { CustomerForm } from "@/components/customer-form"
 import { DailyLogList } from "@/components/daily-log-list"
@@ -63,12 +63,10 @@ export default function AdminDashboardPage() {
       console.error("Failed to load users:", error)
     }
 
-    const allLogs: DailyLog[] = []
-    for (const customer of loadedCustomers) {
-      const customerLogs = await getCustomerLogs(customer.id)
-      allLogs.push(...customerLogs)
-    }
+    // Fetch all logs from database
+    const allLogs = await getAllLogsFromDB()
     setLogs(allLogs)
+    console.log("Admin: Loaded logs:", allLogs.length)
     console.log("Admin: Data loaded successfully")
   }
 
@@ -148,12 +146,15 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
+    <div className="min-h-screen bg-sky-200">
+      <header className="border-b bg-sky-400">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Building2 className="h-8 w-8 text-accent" />
+            <img
+                  src="/skylogo.png"
+                  className="h-11 w-11 object-contain"
+                   />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
                 <p className="text-sm text-muted-foreground">Manage all customers, employees, and system reports</p>
@@ -176,7 +177,7 @@ export default function AdminDashboardPage() {
                   Logout
                 </Button>
               </div>
-              <GlobalSearch customers={roleFilteredCustomers} logs={roleFilteredLogs} />
+             
               <CustomerForm
                 onSuccess={handleSaveCustomer}
                 trigger={
@@ -190,7 +191,7 @@ export default function AdminDashboardPage() {
                 customers={roleFilteredCustomers}
                 onSave={handleSaveDailyLog}
                 trigger={
-                  <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                  <Button variant="outline">
                     <Plus className="h-4 w-4 mr-2" />
                     Log Activity
                   </Button>

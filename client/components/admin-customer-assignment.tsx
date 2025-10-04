@@ -2,45 +2,46 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Users, Search, UserCheck, AlertCircle } from "lucide-react"
-import type { EnhancedCustomer } from "@/lib/types"
-import { EMPLOYEES } from "@/lib/employees"
+import { Users, UserCheck, AlertCircle, FileText } from "lucide-react"
+import type { Customer } from "@/lib/types"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface AdminCustomerAssignmentProps {
-  customers: EnhancedCustomer[]
-  onUpdateCustomer: (customer: EnhancedCustomer) => void
+  customers: Customer[]
+  onUpdateCustomer: (customer: Customer) => void
 }
 
 export function AdminCustomerAssignment({ customers, onUpdateCustomer }: AdminCustomerAssignmentProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterEmployee, setFilterEmployee] = useState<string>("all")
-
-  const filteredCustomers = customers.filter((customer) => {
-    const matchesSearch =
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesEmployee =
-      filterEmployee === "all" ||
-      (filterEmployee === "unassigned" && customer.assignedEmployeeId === "unassigned") ||
-      customer.assignedEmployeeId === filterEmployee
-    return matchesSearch && matchesEmployee
-  })
-
-  const handleAssignEmployee = (customer: EnhancedCustomer, employeeId: string) => {
-    const employee = EMPLOYEES.find((emp) => emp.id === employeeId)
-    const updatedCustomer = {
-      ...customer,
-      assignedEmployeeId: employeeId,
-      assignedEmployeeName: employee?.name || "",
-    }
-    onUpdateCustomer(updatedCustomer)
-  }
-
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [customerLogs, setCustomerLogs] = useState<any[]>([])
+  const [isLogsDialogOpen, setIsLogsDialogOpen] = useState(false)
+  
   const unassignedCount = customers.filter((c) => c.assignedEmployeeId === "unassigned").length
+
+  const handleViewLogs = async (customer: Customer) => {
+    setSelectedCustomer(customer)
+    try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+      const authSession = localStorage.getItem("crm_auth_session")
+      const token = authSession ? JSON.parse(authSession).token : null
+
+      const response = await fetch(`${API_BASE_URL}/customers/${customer.id}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCustomerLogs(data.logs || [])
+        setIsLogsDialogOpen(true)
+      }
+    } catch (error) {
+      console.error("Failed to load logs:", error)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -53,39 +54,6 @@ export function AdminCustomerAssignment({ customers, onUpdateCustomer }: AdminCu
           <CardDescription>Assign customers to employees and manage customer-employee relationships</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <Label htmlFor="search">Search Customers</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search by name or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="sm:w-48">
-              <Label htmlFor="filter">Filter by Employee</Label>
-              <Select value={filterEmployee} onValueChange={setFilterEmployee}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Customers</SelectItem>
-                  <SelectItem value="unassigned">Unassigned ({unassignedCount})</SelectItem>
-                  {EMPLOYEES.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>
-                      {employee.name} - {employee.department}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           {unassignedCount > 0 && (
             <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-orange-600" />
@@ -97,7 +65,7 @@ export function AdminCustomerAssignment({ customers, onUpdateCustomer }: AdminCu
           )}
 
           <div className="space-y-3">
-            {filteredCustomers.map((customer) => (
+            {customers.map((customer) => (
               <div key={customer.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
@@ -124,32 +92,61 @@ export function AdminCustomerAssignment({ customers, onUpdateCustomer }: AdminCu
                     )}
                   </div>
 
-                  <Select
-                    value={customer.assignedEmployeeId}
-                    onValueChange={(value) => handleAssignEmployee(customer, value)}
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleViewLogs(customer)}
                   >
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Assign employee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {EMPLOYEES.map((employee) => (
-                        <SelectItem key={employee.id} value={employee.id}>
-                          {employee.name} - {employee.department}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <FileText className="h-4 w-4 mr-2" />
+                    View Logs
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
 
-          {filteredCustomers.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">No customers found matching your criteria</div>
+          {customers.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">No customers found</div>
           )}
         </CardContent>
       </Card>
+
+      {/* Logs Dialog */}
+      <Dialog open={isLogsDialogOpen} onOpenChange={setIsLogsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Customer Logs - {selectedCustomer?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {customerLogs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No logs found for this customer</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {customerLogs.map((log: any) => (
+                  <div key={log._id} className="p-4 border rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(log.createdAt).toLocaleString()}
+                        </p>
+                        <p className="text-sm font-medium">
+                          By: {log.addedBy?.name || "Unknown"}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{log.note}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

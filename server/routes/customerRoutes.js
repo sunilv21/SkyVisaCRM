@@ -7,11 +7,16 @@ import {
   deleteCustomer,
   addLogToCustomer,
   moveCustomerToTravelling,
+  getAllLogs,
 } from "../controllers/customerController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+// Logs routes (must come before /:id routes)
+router.get("/logs/all", protect, getAllLogs);
+
+// Customer routes
 router.post("/", protect, createCustomer);
 router.get("/", protect, getCustomers);
 router.get("/:id", protect, getCustomerById);

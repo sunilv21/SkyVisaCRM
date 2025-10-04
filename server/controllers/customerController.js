@@ -27,7 +27,35 @@ export const createCustomer = async (req, res) => {
 export const getCustomers = async (req, res) => {
   try {
     console.log("GET /customers - User:", req.user?.email);
-    const customers = await Customer.find().populate("createdBy", "name role");
+    
+    // Build query based on filters
+    const query = {};
+    
+    // Filter by status
+    if (req.query.status && req.query.status !== "all") {
+      query.status = req.query.status;
+    }
+    
+    // Filter by date range
+    if (req.query.dateFrom || req.query.dateTo) {
+      query.createdAt = {};
+      if (req.query.dateFrom) {
+        query.createdAt.$gte = new Date(req.query.dateFrom);
+      }
+      if (req.query.dateTo) {
+        // Add one day to include the entire end date
+        const endDate = new Date(req.query.dateTo);
+        endDate.setDate(endDate.getDate() + 1);
+        query.createdAt.$lt = endDate;
+      }
+    }
+    
+    // Filter by destination (search)
+    if (req.query.destination) {
+      query.destination = { $regex: req.query.destination, $options: "i" };
+    }
+    
+    const customers = await Customer.find(query).populate("createdBy", "name role");
     console.log("Found customers:", customers.length);
     
     // Map _id to id for frontend compatibility
@@ -104,13 +132,42 @@ export const getCustomerById = async (req, res) => {
 };
 
 export const addLogToCustomer = async (req, res) => {
-  const { note } = req.body;
-  const log = await Log.create({
-    customer: req.params.id,
-    note,
-    addedBy: req.user._id,
-  });
-  res.status(201).json(log);
+  try {
+    const { note, type, subject, outcome, followUpRequired, followUpDate, duration } = req.body;
+    
+    if (!note) {
+      return res.status(400).json({ message: "Note is required" });
+    }
+    
+    // Verify customer exists
+    const customer = await Customer.findById(req.params.id);
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+    
+    const logData = {
+      customer: req.params.id,
+      note,
+      addedBy: req.user._id,
+      type: type || "note",
+      subject: subject || "",
+      outcome: outcome || "neutral",
+      followUpRequired: followUpRequired || false,
+      followUpDate: followUpDate || null,
+      duration: duration || 0,
+    };
+    
+    const log = await Log.create(logData);
+    
+    // Populate the addedBy field before sending response
+    await log.populate("addedBy", "name");
+    
+    console.log("Log created successfully:", log);
+    res.status(201).json(log);
+  } catch (error) {
+    console.error("Add log error:", error);
+    res.status(500).json({ message: "Failed to add log", error: error.message });
+  }
 };
 
 export const moveCustomerToTravelling = async (req, res) => {
@@ -120,4 +177,41 @@ export const moveCustomerToTravelling = async (req, res) => {
   customer.status = "travelling";
   await customer.save();
   res.json({ message: "Customer moved to travelling section", customer });
+};
+
+export const getAllLogs = async (req, res) => {
+  try {
+    // Fetch all logs with customer and addedBy information
+    const logs = await Log.find()
+      .populate("customer", "name email")
+      .populate("addedBy", "name email")
+      .sort({ createdAt: -1 }); // Most recent first
+    
+    // Transform logs to match frontend DailyLog format
+    const transformedLogs = logs.map(log => {
+      const logObj = log.toObject();
+      return {
+        id: logObj._id.toString(),
+        customerId: logObj.customer?._id?.toString() || "",
+        customerName: logObj.customer?.name || "Unknown",
+        date: logObj.createdAt ? new Date(logObj.createdAt).toISOString().split('T')[0] : "",
+        type: logObj.type || "note",
+        subject: logObj.subject || "",
+        description: logObj.note,
+        duration: logObj.duration || 0,
+        outcome: logObj.outcome || "neutral",
+        followUpRequired: logObj.followUpRequired || false,
+        followUpDate: logObj.followUpDate || "",
+        employeeName: logObj.addedBy?.name || "Unknown",
+        employeeId: logObj.addedBy?._id?.toString() || "",
+        createdAt: logObj.createdAt
+      };
+    });
+    
+    console.log("Fetched logs:", transformedLogs.length);
+    res.json(transformedLogs);
+  } catch (error) {
+    console.error("Get all logs error:", error);
+    res.status(500).json({ message: "Failed to fetch logs", error: error.message });
+  }
 };

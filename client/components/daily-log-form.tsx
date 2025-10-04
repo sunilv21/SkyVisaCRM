@@ -35,8 +35,8 @@ export function DailyLogForm({ log, customers, onSave, trigger }: DailyLogFormPr
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState<Partial<DailyLog>>({
     id: log?.id,
-    customerId: log?.customerId || "",
-    customerName: log?.customerName || "",
+    customerId: log?.customerId || (customers.length === 1 ? customers[0].id : ""),
+    customerName: log?.customerName || (customers.length === 1 ? customers[0].name : ""),
     date: log?.date || new Date().toISOString().split("T")[0],
     type: log?.type || "call",
     subject: log?.subject || "",
@@ -63,8 +63,15 @@ export function DailyLogForm({ log, customers, onSave, trigger }: DailyLogFormPr
         followUpRequired: log.followUpRequired,
         followUpDate: log.followUpDate,
       })
+    } else if (customers.length === 1) {
+      // Auto-select customer if only one is provided
+      setFormData(prev => ({
+        ...prev,
+        customerId: customers[0].id,
+        customerName: customers[0].name,
+      }))
     }
-  }, [log])
+  }, [log, customers])
 
   const handleCustomerChange = (customerId: string) => {
     const customer = customers.find((c) => c.id === customerId)
@@ -87,13 +94,13 @@ export function DailyLogForm({ log, customers, onSave, trigger }: DailyLogFormPr
     }
 
     try {
-      onSave(payload as DailyLog)
+      await onSave(payload as DailyLog)
       setOpen(false)
       if (!log) {
         // reset form if new log
         setFormData({
-          customerId: "",
-          customerName: "",
+          customerId: customers.length === 1 ? customers[0].id : "",
+          customerName: customers.length === 1 ? customers[0].name : "",
           date: new Date().toISOString().split("T")[0],
           type: "call",
           subject: "",
@@ -131,6 +138,7 @@ export function DailyLogForm({ log, customers, onSave, trigger }: DailyLogFormPr
             <Select
               value={formData.customerId}
               onValueChange={handleCustomerChange}
+              disabled={customers.length === 1}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a customer" />

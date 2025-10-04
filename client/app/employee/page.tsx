@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, Users, FileText, Calendar, Plus, LogOut, Plane } from "lucide-react"
 import type { Customer, DailyLog, DashboardStats } from "@/lib/types"
 import { getCustomers, saveCustomer, deleteCustomer, saveDailyLog, deleteDailyLog } from "@/lib/storage"
-import { getCustomerLogs } from "@/lib/api"
+import { getAllLogsFromDB } from "@/lib/api"
 import { CustomerList } from "@/components/customer-list"
 import { CustomerForm } from "@/components/customer-form"
 import { DailyLogList } from "@/components/daily-log-list"
@@ -48,15 +48,15 @@ export default function EmployeeDashboardPage() {
   }, [customers, logs, user])
 
   const loadData = async () => {
+    console.log("Loading data from database...")
     const loadedCustomers = await getCustomers()
     setCustomers(loadedCustomers)
+    console.log("Loaded customers:", loadedCustomers.length)
 
-    const allLogs: DailyLog[] = []
-    for (const customer of loadedCustomers) {
-      const customerLogs = await getCustomerLogs(customer.id)
-      allLogs.push(...customerLogs)
-    }
+    // Fetch all logs from database
+    const allLogs = await getAllLogsFromDB()
     setLogs(allLogs)
+    console.log("Loaded logs:", allLogs.length)
   }
 
   useEffect(() => {
@@ -259,17 +259,18 @@ export default function EmployeeDashboardPage() {
         <Tabs defaultValue="database" className="space-y-6">
           <div className="flex items-center justify-between w-full">
             <TabsList className="flex-1 w-full">
-              <TabsTrigger value="database">
-                <Users className="h-4 w-4 mr-1" />
-                Customer Database
-              </TabsTrigger>
+            <TabsTrigger value="customers">My Customers</TabsTrigger>
+            <TabsTrigger value="logs">Daily Logs</TabsTrigger>
               <TabsTrigger value="travel">
                 <Plane className="h-4 w-4 mr-1" />
                 Travelling
               </TabsTrigger>
-              <TabsTrigger value="logs">Daily Logs</TabsTrigger>
-              <TabsTrigger value="customers">My Customers</TabsTrigger>
+              
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="database">
+                <Users className="h-4 w-4 mr-1" />
+                Customer Database
+              </TabsTrigger>
             </TabsList>
 
             <AdvancedFilters
