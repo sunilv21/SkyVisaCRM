@@ -16,7 +16,7 @@ const app = express();
 const allowedOrigins = [
   process.env.CLIENT_URL,  // e.g. https://skycrm01.vercel.app
   "http://localhost:3000",
-  "http://localhost:3001"
+  "https://skycrm01.vercel.app"
 ].filter(Boolean);
 
 // ✅ CORS middleware
