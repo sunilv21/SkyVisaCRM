@@ -56,7 +56,9 @@ app.get("/", (req, res) => {
     endpoints: {
       health: "/health",
       auth: "/auth",
+      auth: "/api/auth",
       users: "/users",
+      users: "/api/users",
       customers: "/customers",
     },
   });
@@ -65,6 +67,7 @@ app.get("/", (req, res) => {
 // Routes without /api prefix
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
+app.use("/api/users", userRoutes);
 app.use("/customers", customerRoutes);
 
 // Error handler
