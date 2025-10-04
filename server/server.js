@@ -41,7 +41,7 @@ app.options("*", cors({
 app.use(express.json());
 
 // Health check endpoint
-app.get("/api/health", (req, res) => {
+app.get("/health", (req, res) => {
   res.status(200).json({
     status: "ok",
     message: "CRM Backend API is running",
@@ -54,18 +54,18 @@ app.get("/", (req, res) => {
   res.status(200).json({
     message: "CRM Backend API is live 🚀",
     endpoints: {
-      health: "/api/health",
-      auth: "/api/auth",
-      users: "/api/users",
-      customers: "/api/customers",
+      health: "/health",
+      auth: "/auth",
+      users: "/users",
+      customers: "/customers",
     },
   });
 });
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/customers", customerRoutes);
+// Routes without /api prefix
+app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
+app.use("/customers", customerRoutes);
 
 // Error handler
 app.use(errorHandler);
