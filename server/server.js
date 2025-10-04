@@ -14,16 +14,15 @@ const app = express();
 
 // ✅ Allowed origins for production and development
 const allowedOrigins = [
-  process.env.CLIENT_URL,  // e.g. https://skyvisa.vercel.app
+  process.env.CLIENT_URL,  // e.g. https://skycrm01.vercel.app
   "http://localhost:3000",
   "http://localhost:3001"
-].filter(Boolean); // Remove undefined values
+].filter(Boolean);
 
+// ✅ CORS middleware
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-
+    if (!origin) return callback(null, true); // allow non-browser requests (curl, Postman)
     if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
       callback(null, true);
     } else {
@@ -31,6 +30,12 @@ app.use(cors({
     }
   },
   credentials: true,
+}));
+
+// ✅ Handle preflight OPTIONS requests
+app.options("*", cors({
+  origin: allowedOrigins,
+  credentials: true
 }));
 
 app.use(express.json());
