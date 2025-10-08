@@ -50,6 +50,10 @@ const customerSchema = new mongoose.Schema(
     // Group Travelers
     groupTravelers: { type: [String], default: [] },
     
+    // Follow-up Information
+    followUpRequired: { type: Boolean, default: false },
+    followUpDate: { type: String },
+    
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
